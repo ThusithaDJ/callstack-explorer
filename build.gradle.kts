@@ -41,11 +41,7 @@ intellijPlatform {
 
         ideaVersion {
             sinceBuild.set(providers.gradleProperty("pluginSinceBuild"))
-            // Deliberately left unset: the Plugin Verifier rejects a blank
-            // until-build attribute as an invalid build number, and this repo
-            // has only actually been verified against 2024.2. Falls back to
-            // this Gradle plugin's default convention ("242.*"); widen this
-            // once compatibility with newer IDE major versions is confirmed.
+            untilBuild.set(provider { null })
         }
     }
 
