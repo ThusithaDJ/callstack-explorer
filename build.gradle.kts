@@ -40,6 +40,21 @@ intellijPlatform {
 
         ideaVersion {
             sinceBuild.set(providers.gradleProperty("pluginSinceBuild"))
+            // Leave open-ended so the plugin keeps showing as compatible with
+            // future IDE versions instead of being capped at 2024.2.x.
+            untilBuild.set("")
+        }
+    }
+
+    // Requires a Marketplace Permanent Token: https://plugins.jetbrains.com/author/me/tokens
+    // Run with: PUBLISH_TOKEN=xxx ./gradlew publishPlugin
+    publishing {
+        token.set(providers.environmentVariable("PUBLISH_TOKEN"))
+    }
+
+    pluginVerification {
+        ides {
+            recommended()
         }
     }
 }

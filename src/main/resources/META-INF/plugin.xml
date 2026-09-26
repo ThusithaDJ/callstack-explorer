@@ -1,14 +1,37 @@
 <idea-plugin>
     <id>com.thusitha.callstackexplorer</id>
     <name>Call Stack Explorer</name>
-    <vendor email="thusitha.blade@gmail.com">Thusitha</vendor>
+    <vendor email="thusitha.blade@gmail.com" url="https://github.com/ThusithaDJ/callstack-explorer">Thusitha</vendor>
 
     <description><![CDATA[
-        Captures the debugger call stack (frames + variables) the moment a
-        breakpoint is hit and persists it independently of the debug
-        session's lifetime, so it can be browsed later even after the
-        remote JVM is gone.
+        <p>Captures a debugger's call stack — frames and variables — the moment
+        a breakpoint is hit, and persists it independently of the debug
+        session's lifetime.</p>
+
+        <p>When a remote debug session times out or drops (network blip,
+        server restart, session lease expiry), the call stack and locals are
+        normally gone for good, forcing you to reproduce the conditions and
+        re-hit the same breakpoint. This plugin keeps a snapshot around so you
+        can keep inspecting it after the JVM on the other end is long gone.</p>
+
+        <p><b>Features:</b></p>
+        <ul>
+            <li>"Save Call Stack" action, available whenever a debug session is suspended</li>
+            <li>Optional automatic capture on every breakpoint pause</li>
+            <li>Persists thread(s), frames (class, method, file, line), and locals as string previews, to a configurable depth</li>
+            <li>A dedicated "Call Stack Explorer" tool window listing saved snapshots in a tree: snapshot → thread → frame → variables</li>
+            <li>Double-click a frame to jump straight to that source line</li>
+            <li>Snapshots survive IDE restart — stored on disk per project</li>
+        </ul>
     ]]></description>
+
+    <change-notes><![CDATA[
+        <p><b>0.1.0</b></p>
+        <ul>
+            <li>Initial release: manual and auto-capture of call stacks on breakpoint pause</li>
+            <li>Call Stack Explorer tool window with snapshot/thread/frame/variable tree and source navigation</li>
+        </ul>
+    ]]></change-notes>
 
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.java</depends>
