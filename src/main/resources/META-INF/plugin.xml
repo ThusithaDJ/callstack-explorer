@@ -1,0 +1,48 @@
+<idea-plugin>
+    <id>com.thusitha.callstackexplorer</id>
+    <name>Call Stack Explorer</name>
+    <vendor email="thusitha.blade@gmail.com">Thusitha</vendor>
+
+    <description><![CDATA[
+        Captures the debugger call stack (frames + variables) the moment a
+        breakpoint is hit and persists it independently of the debug
+        session's lifetime, so it can be browsed later even after the
+        remote JVM is gone.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.java</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <projectService serviceImplementation="com.thusitha.callstackexplorer.storage.SnapshotStorageService"/>
+        <projectService serviceImplementation="com.thusitha.callstackexplorer.settings.CallStackExplorerSettings"/>
+
+        <projectConfigurable
+                parentId="tools"
+                instance="com.thusitha.callstackexplorer.settings.CallStackExplorerConfigurable"
+                id="com.thusitha.callstackexplorer.settings.CallStackExplorerConfigurable"
+                displayName="Call Stack Explorer"/>
+
+        <toolWindow id="Call Stack Explorer"
+                    anchor="bottom"
+                    factoryClass="com.thusitha.callstackexplorer.ui.CallStackToolWindowFactory"
+                    icon="/icons/callstack.svg"/>
+
+        <notificationGroup id="Call Stack Explorer" displayType="BALLOON"/>
+    </extensions>
+
+    <applicationListeners>
+        <listener class="com.thusitha.callstackexplorer.listener.DebugProcessAttachListener"
+                   topic="com.intellij.xdebugger.XDebuggerManagerListener"/>
+    </applicationListeners>
+
+    <actions>
+        <action id="CallStackExplorer.SaveStack"
+                class="com.thusitha.callstackexplorer.action.SaveStackAction"
+                text="Save Call Stack"
+                description="Save the current debugger call stack for later viewing"
+                icon="/icons/saveStack.svg">
+            <add-to-group group-id="XDebugger.ToolbarNewUI" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>
