@@ -1,6 +1,9 @@
 package com.thusitha.callstackexplorer.capture
 
+import com.intellij.debugger.engine.DebuggerManagerThreadImpl
+import com.intellij.debugger.engine.JavaDebugProcess
 import com.intellij.debugger.engine.JavaStackFrame
+import com.intellij.debugger.engine.events.DebuggerCommandImpl
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.XSourcePosition
@@ -38,7 +41,10 @@ object StackSnapshotBuilder {
             return null
         }
         val frames = fetchStackFrames(executionStack, DEFAULT_FRAME_LIST_TIMEOUT_MS) ?: return null
-        val frameSnapshots = frames.mapNotNull { toFrameSnapshot(it, includeVariables = false, maxDepth = 0, timeoutMs = 0) }
+        val managerThread = managerThreadOf(session)
+        val frameSnapshots = frames.mapNotNull {
+            toFrameSnapshot(it, managerThread, includeVariables = false, maxDepth = 0, timeoutMs = 0)
+        }
         val threadSnapshot = ThreadSnapshot(
             threadName = executionStack.displayName,
             frames = frameSnapshots
@@ -68,8 +74,9 @@ object StackSnapshotBuilder {
             return null
         }
         val frames = fetchStackFrames(executionStack, DEFAULT_FRAME_LIST_TIMEOUT_MS) ?: return null
+        val managerThread = managerThreadOf(session)
         val frameSnapshots = frames.mapNotNull {
-            toFrameSnapshot(it, includeVariables = true, maxDepth = maxDepth, timeoutMs = variableTimeoutMs)
+            toFrameSnapshot(it, managerThread, includeVariables = true, maxDepth = maxDepth, timeoutMs = variableTimeoutMs)
         }
         val threadSnapshot = ThreadSnapshot(
             threadName = executionStack.displayName,
@@ -114,8 +121,24 @@ object StackSnapshotBuilder {
 
     // ---- per-frame conversion ----------------------------------------------
 
+    /**
+     * Resolves the [DebuggerManagerThreadImpl] backing this session, if it's a
+     * JVM debug session. Any call into raw JDI objects (like
+     * [com.intellij.debugger.jdi.StackFrameProxyImpl.location]) must run on
+     * this thread - the platform's own `XStackFrame`/`XValue` methods
+     * (`computeChildren`, `computePresentation`) already marshal onto it
+     * internally, but reaching into `JavaStackFrame.getStackFrameProxy()`
+     * directly bypasses that, which is what §5.1 of IMPLEMENTATION_PLAN.md
+     * flagged as the highest-risk part of this capture pipeline.
+     */
+    private fun managerThreadOf(session: XDebugSession): DebuggerManagerThreadImpl? {
+        val javaProcess = session.debugProcess as? JavaDebugProcess ?: return null
+        return javaProcess.debuggerSession.process.managerThread
+    }
+
     private fun toFrameSnapshot(
         frame: XStackFrame,
+        managerThread: DebuggerManagerThreadImpl?,
         includeVariables: Boolean,
         maxDepth: Int,
         timeoutMs: Long
@@ -124,14 +147,8 @@ object StackSnapshotBuilder {
         val fileUrl = sourcePosition?.file?.url
         val lineNumber = (sourcePosition?.line ?: -1) + 1 // stored 1-based for display
 
-        val (className, methodName) = if (frame is JavaStackFrame) {
-            try {
-                val location = frame.stackFrameProxy.location()
-                location.declaringType().name() to location.method().name()
-            } catch (e: Exception) {
-                LOG.warn("Failed to resolve JDI location for frame", e)
-                "<unknown>" to "<unknown>"
-            }
+        val (className, methodName) = if (frame is JavaStackFrame && managerThread != null) {
+            resolveJdiLocation(frame, managerThread, sourcePosition)
         } else {
             (sourcePosition?.file?.name ?: "<unknown>") to "<unknown>"
         }
@@ -149,6 +166,29 @@ object StackSnapshotBuilder {
             lineNumber = lineNumber,
             variables = variables
         )
+    }
+
+    /** Runs the raw JDI location lookup on the debugger's manager thread, as JDI requires. */
+    private fun resolveJdiLocation(
+        frame: JavaStackFrame,
+        managerThread: DebuggerManagerThreadImpl,
+        sourcePosition: XSourcePosition?
+    ): Pair<String, String> {
+        var className = "<unknown>"
+        var methodName = "<unknown>"
+        try {
+            managerThread.invokeAndWait(object : DebuggerCommandImpl() {
+                override fun action() {
+                    val location = frame.stackFrameProxy.location()
+                    className = location.declaringType().name()
+                    methodName = location.method().name()
+                }
+            })
+        } catch (e: Exception) {
+            LOG.warn("Failed to resolve JDI location for frame", e)
+            className = sourcePosition?.file?.name ?: "<unknown>"
+        }
+        return className to methodName
     }
 
     // ---- variable resolution ------------------------------------------------

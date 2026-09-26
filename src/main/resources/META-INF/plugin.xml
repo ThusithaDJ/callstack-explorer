@@ -42,7 +42,7 @@
                 text="Save Call Stack"
                 description="Save the current debugger call stack for later viewing"
                 icon="/icons/saveStack.svg">
-            <add-to-group group-id="XDebugger.ToolbarNewUI" anchor="last"/>
+            <add-to-group group-id="XDebugger.ToolWindow.TopToolbar3.Extra" anchor="last"/>
         </action>
     </actions>
 </idea-plugin>
