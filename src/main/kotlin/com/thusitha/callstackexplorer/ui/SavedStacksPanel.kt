@@ -85,8 +85,9 @@ class SavedStacksPanel(private val project: Project) : JPanel(BorderLayout()) {
 
     private fun loadSnapshotChildren(node: SnapshotNode) {
         node.loaded = true
-        val snapshot = SnapshotStorageService.getInstance(project).load(node.summary.id) ?: return
-        snapshot.threads.forEach { node.add(ThreadNode(it)) }
+        node.removeAllChildren()
+        val snapshot = SnapshotStorageService.getInstance(project).load(node.summary.id)
+        snapshot?.threads?.forEach { node.add(ThreadNode(it)) }
         treeModel.reload(node)
     }
 

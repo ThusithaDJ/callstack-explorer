@@ -9,6 +9,12 @@ import javax.swing.tree.DefaultMutableTreeNode
 /** Root → [SnapshotNode] → [ThreadNode] → [FrameNode] → [VariableNode] (recursively). */
 class SnapshotNode(val summary: SnapshotSummary) : DefaultMutableTreeNode(summary) {
     var loaded = false
+
+    init {
+        // Placeholder child so Swing renders an expand arrow before the real
+        // threads/frames are lazy-loaded on first expand (see SavedStacksPanel).
+        add(DefaultMutableTreeNode("Loading..."))
+    }
 }
 
 class ThreadNode(val thread: ThreadSnapshot) : DefaultMutableTreeNode(thread) {
