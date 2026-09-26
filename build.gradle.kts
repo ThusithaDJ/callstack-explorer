@@ -21,6 +21,7 @@ dependencies {
         create(providers.gradleProperty("platformType"), providers.gradleProperty("platformVersion"))
         bundledPlugin("com.intellij.java")
         instrumentationTools()
+        pluginVerifier()
     }
 
     implementation("com.google.code.gson:gson:2.11.0")
@@ -40,9 +41,11 @@ intellijPlatform {
 
         ideaVersion {
             sinceBuild.set(providers.gradleProperty("pluginSinceBuild"))
-            // Leave open-ended so the plugin keeps showing as compatible with
-            // future IDE versions instead of being capped at 2024.2.x.
-            untilBuild.set("")
+            // Deliberately left unset: the Plugin Verifier rejects a blank
+            // until-build attribute as an invalid build number, and this repo
+            // has only actually been verified against 2024.2. Falls back to
+            // this Gradle plugin's default convention ("242.*"); widen this
+            // once compatibility with newer IDE major versions is confirmed.
         }
     }
 
@@ -54,7 +57,11 @@ intellijPlatform {
 
     pluginVerification {
         ides {
-            recommended()
+            // recommended() tries to resolve the latest IDE build, which can
+            // fail if this Gradle plugin version predates that release's
+            // download URL scheme. Verify against the version we actually
+            // build/test against instead (already cached locally from runIde).
+            ide(providers.gradleProperty("platformType"), providers.gradleProperty("platformVersion"))
         }
     }
 }
