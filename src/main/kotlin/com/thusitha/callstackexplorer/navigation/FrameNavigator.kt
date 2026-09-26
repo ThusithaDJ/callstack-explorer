@@ -67,7 +67,8 @@ object FrameNavigator {
         lastEditor = editor
     }
 
-    private fun clearHighlight() {
+    /** Removes the current execution-line highlight, if any. */
+    fun clearHighlight() {
         val highlighter = lastHighlighter ?: return
         val editor = lastEditor
         if (editor != null && !editor.isDisposed) {

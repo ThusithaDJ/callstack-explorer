@@ -137,6 +137,7 @@ class SavedStacksPanel(private val project: Project) : JPanel(BorderLayout()) {
             override fun actionPerformed(e: AnActionEvent) {
                 val node = selectedSnapshotNode() ?: return
                 SnapshotStorageService.getInstance(project).delete(node.summary.id)
+                FrameNavigator.clearHighlight()
                 refresh()
             }
         })
@@ -149,9 +150,15 @@ class SavedStacksPanel(private val project: Project) : JPanel(BorderLayout()) {
                 )
                 if (result == Messages.YES) {
                     SnapshotStorageService.getInstance(project).clearAll()
+                    FrameNavigator.clearHighlight()
                     refresh()
                 }
             }
+        })
+
+        group.add(object : AnAction("Remove Highlight", "Clear the highlighted call stack line", AllIcons.Actions.Cancel) {
+            override fun getActionUpdateThread() = ActionUpdateThread.BGT
+            override fun actionPerformed(e: AnActionEvent) = FrameNavigator.clearHighlight()
         })
 
         return group
