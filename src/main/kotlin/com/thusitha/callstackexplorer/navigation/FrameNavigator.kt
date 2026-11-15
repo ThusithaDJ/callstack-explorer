@@ -1,6 +1,5 @@
 package com.thusitha.callstackexplorer.navigation
 
-import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.markup.HighlighterTargetArea
@@ -13,6 +12,7 @@ import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.impl.compiled.ClsFileImpl
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.xdebugger.ui.DebuggerColors
+import com.thusitha.callstackexplorer.capture.CaptureRunner
 import com.thusitha.callstackexplorer.capture.FrameSnapshot
 
 object FrameNavigator {
@@ -34,13 +34,13 @@ object FrameNavigator {
                 .findClass(frame.className, GlobalSearchScope.allScope(project))
             val vFile = psiClass?.containingFile?.virtualFile
             if (vFile != null && psiClass.containingFile is ClsFileImpl) {
-                notify(project, "Showing decompiled source for ${frame.className} — original source not found", NotificationType.WARNING)
+                CaptureRunner.notify(project, "Showing decompiled source for ${frame.className} — original source not found", NotificationType.WARNING)
             }
             vFile
         }
 
         if (virtualFile == null) {
-            notify(project, "Source not found for ${frame.className}", NotificationType.WARNING)
+            CaptureRunner.notify(project, "Source not found for ${frame.className}", NotificationType.WARNING)
             return
         }
 
@@ -76,12 +76,5 @@ object FrameNavigator {
         }
         lastHighlighter = null
         lastEditor = null
-    }
-
-    private fun notify(project: Project, message: String, type: NotificationType) {
-        NotificationGroupManager.getInstance()
-            .getNotificationGroup("Call Stack Explorer")
-            .createNotification(message, type)
-            .notify(project)
     }
 }

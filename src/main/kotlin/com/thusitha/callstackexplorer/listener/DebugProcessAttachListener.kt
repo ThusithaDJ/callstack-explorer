@@ -1,12 +1,9 @@
 package com.thusitha.callstackexplorer.listener
 
-import com.intellij.openapi.progress.ProgressManager
-import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
+import com.thusitha.callstackexplorer.capture.SnapshotSaver
 import com.thusitha.callstackexplorer.capture.StackSnapshotBuilder
 import com.thusitha.callstackexplorer.settings.CallStackExplorerSettings
-import com.thusitha.callstackexplorer.storage.SnapshotStorageService
-import com.thusitha.callstackexplorer.ui.CallStackToolWindowFactory
 import com.intellij.xdebugger.XDebugProcess
 import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.XDebugSessionListener
@@ -53,16 +50,13 @@ class DebugProcessAttachListener : XDebuggerManagerListener {
     }
 
     private fun captureAsync(project: Project, session: XDebugSession, label: String) {
-        ProgressManager.getInstance().run(object : Task.Backgroundable(project, "Capturing Call Stack", false) {
-            override fun run(indicator: com.intellij.openapi.progress.ProgressIndicator) {
-                val settings = CallStackExplorerSettings.getInstance(project).settingsState
-                val snapshot = StackSnapshotBuilder.captureFull(session, label, settings.maxVariableDepth)
-                    ?: return
-                val storage = SnapshotStorageService.getInstance(project)
-                storage.save(snapshot)
-                storage.pruneToLimit(settings.maxSnapshotsRetained)
-                CallStackToolWindowFactory.refresh(project)
-            }
-        })
+        val maxDepth = CallStackExplorerSettings.getInstance(project).settingsState.maxVariableDepth
+        SnapshotSaver.captureAndSave(
+            project,
+            "Auto-capturing call stack",
+            "Reading frames and variable values at this breakpoint. Large objects or a remote JVM can make this slow."
+        ) { indicator ->
+            StackSnapshotBuilder.captureFull(session, label, maxDepth, indicator = indicator)
+        }
     }
 }

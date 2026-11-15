@@ -3,18 +3,12 @@ package com.thusitha.callstackexplorer.action
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.progress.ProgressIndicator
-import com.intellij.openapi.progress.ProgressManager
-import com.intellij.openapi.progress.Task
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import com.intellij.xdebugger.XDebuggerManager
+import com.thusitha.callstackexplorer.capture.SnapshotSaver
+import com.thusitha.callstackexplorer.capture.SnapshotTextRenderer
 import com.thusitha.callstackexplorer.capture.StackSnapshotBuilder
 import com.thusitha.callstackexplorer.settings.CallStackExplorerSettings
-import com.thusitha.callstackexplorer.storage.SnapshotStorageService
-import com.thusitha.callstackexplorer.ui.CallStackToolWindowFactory
-import java.time.format.DateTimeFormatter
-import java.time.ZoneId
 
 class SaveStackAction : AnAction() {
 
@@ -35,9 +29,7 @@ class SaveStackAction : AnAction() {
         val position = frame?.sourcePosition
         val fileName = position?.file?.name ?: "breakpoint"
         val line = (position?.line ?: -1) + 1
-        val timestamp = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-            .withZone(ZoneId.systemDefault())
-            .format(java.time.Instant.now())
+        val timestamp = SnapshotTextRenderer.TIMESTAMP.format(java.time.Instant.now())
         val defaultLabel = "$fileName:$line — $timestamp"
 
         val label = Messages.showInputDialog(
@@ -51,17 +43,12 @@ class SaveStackAction : AnAction() {
 
         val maxDepth = CallStackExplorerSettings.getInstance(project).settingsState.maxVariableDepth
 
-        ProgressManager.getInstance().run(object : Task.Backgroundable(project, "Capturing Call Stack", false) {
-            override fun run(indicator: ProgressIndicator) {
-                val snapshot = StackSnapshotBuilder.captureFull(session, label, maxDepth)
-                if (snapshot == null) {
-                    return
-                }
-                val storage = SnapshotStorageService.getInstance(project)
-                storage.save(snapshot)
-                storage.pruneToLimit(CallStackExplorerSettings.getInstance(project).settingsState.maxSnapshotsRetained)
-                CallStackToolWindowFactory.refresh(project)
-            }
-        })
+        SnapshotSaver.captureAndSave(
+            project,
+            "Capturing call stack",
+            "Reading frames and variable values from the debugger. Large objects or a remote JVM can make this slow."
+        ) { indicator ->
+            StackSnapshotBuilder.captureFull(session, label, maxDepth, indicator = indicator)
+        }
     }
 }

@@ -9,7 +9,6 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.thusitha.callstackexplorer.capture.SnapshotModel
 import com.thusitha.callstackexplorer.capture.SnapshotSummary
-import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Instant
@@ -43,7 +42,7 @@ class SnapshotStorageService(private val project: Project) {
 
         val index = readIndex().toMutableList()
         index.removeAll { it.id == snapshot.id }
-        index.add(0, SnapshotSummary(snapshot.id, snapshot.label, snapshot.capturedAt))
+        index.add(0, SnapshotSummary(snapshot.id, snapshot.label, snapshot.capturedAt, snapshot.effectiveKind))
         writeIndex(index)
     }
 
@@ -61,12 +60,15 @@ class SnapshotStorageService(private val project: Project) {
         }
     }
 
+    fun delete(id: String) = deleteAll(listOf(id))
+
+    /** Deletes several snapshots with a single index rewrite. */
     @Synchronized
-    fun delete(id: String) {
-        Files.deleteIfExists(baseDir.resolve("$id.json"))
-        val index = readIndex().toMutableList()
-        index.removeAll { it.id == id }
-        writeIndex(index)
+    fun deleteAll(ids: Collection<String>) {
+        if (ids.isEmpty()) return
+        val doomed = ids.toSet()
+        doomed.forEach { Files.deleteIfExists(baseDir.resolve("$it.json")) }
+        writeIndex(readIndex().filter { it.id !in doomed })
     }
 
     @Synchronized
@@ -75,20 +77,13 @@ class SnapshotStorageService(private val project: Project) {
         save(snapshot.copy(label = newLabel))
     }
 
-    @Synchronized
-    fun clearAll() {
-        if (Files.exists(baseDir)) {
-            Files.list(baseDir).use { stream -> stream.forEach { File(it.toUri()).delete() } }
-        }
-    }
-
     /** Keeps only the [limit] most recent snapshots, deleting the oldest first. */
     @Synchronized
     fun pruneToLimit(limit: Int) {
         if (limit <= 0) return
         val index = readIndex().sortedByDescending { it.capturedAt }
         if (index.size <= limit) return
-        index.drop(limit).forEach { delete(it.id) }
+        deleteAll(index.drop(limit).map { it.id })
     }
 
     private fun readIndex(): List<SnapshotSummary> {

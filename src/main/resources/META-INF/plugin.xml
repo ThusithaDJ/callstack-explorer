@@ -19,13 +19,29 @@
             <li>"Save Call Stack" action, available whenever a debug session is suspended</li>
             <li>Optional automatic capture on every breakpoint pause</li>
             <li>Persists thread(s), frames (class, method, file, line), and locals as string previews, to a configurable depth</li>
-            <li>A dedicated "Call Stack Explorer" tool window listing saved snapshots in a tree: snapshot → thread → frame → variables</li>
+            <li>A "Call Stack Explorer" tool window laid out like the Debug tool window: Call Stacks (snapshots, frames, variables) and Values tabs</li>
             <li>Double-click a frame to jump straight to that source line</li>
             <li>Snapshots survive IDE restart — stored on disk per project</li>
+            <li>"Save Value to Call Stack Explorer" on selected variables in the debugger's Variables view</li>
+            <li>Compare two snapshots, or a snapshot against the live paused debugger, in a variables tree styled like the debugger's, with changed values highlighted</li>
+            <li>Export a comparison as an HTML page or text, to share as evidence</li>
+            <li>Progress notice in the bottom-right corner when a capture is slow</li>
+            <li>AI assistant access: "Copy for AI Assistant", plus an opt-in local MCP server for Claude Code, GitHub Copilot and other MCP clients</li>
         </ul>
     ]]></description>
 
     <change-notes><![CDATA[
+        <p><b>1.0.0</b></p>
+        <ul>
+            <li>Save selected object values from the debugger's Variables view</li>
+            <li>Redesigned tool window like the Debug tool window: Call Stacks and Values tabs, frames and variables panes</li>
+            <li>Compare snapshots with each other or with the current debug session, shown like the debugger's Variables view (JVM object ids ignored); each comparison opens in its own closable tab</li>
+            <li>Export comparisons as HTML or text for sharing</li>
+            <li>Bottom-right progress notice for slow captures; captures can now be cancelled</li>
+            <li>Copy snapshots as Markdown for AI chats, and an opt-in localhost MCP server exposing debugger state to AI assistants</li>
+            <li>Plugin errors can be reported to the developer from the IDE's error dialog</li>
+            <li>Faster deleting and pruning of snapshots; supports IntelliJ IDEA 2024.2 and newer</li>
+        </ul>
         <p><b>0.1.0</b></p>
         <ul>
             <li>Initial release: manual and auto-capture of call stacks on breakpoint pause</li>
@@ -37,6 +53,10 @@
     <depends>com.intellij.modules.java</depends>
 
     <extensions defaultExtensionNs="com.intellij">
+        <!-- Sends uncaught exceptions and freezes from this plugin to its JetBrains Marketplace page
+             (with the user's consent). See https://plugins.jetbrains.com/docs/marketplace/error-handler.html -->
+        <errorHandler implementation="com.intellij.diagnostic.JetBrainsMarketplaceErrorReportSubmitter"/>
+
         <projectService serviceImplementation="com.thusitha.callstackexplorer.storage.SnapshotStorageService"/>
         <projectService serviceImplementation="com.thusitha.callstackexplorer.settings.CallStackExplorerSettings"/>
 
@@ -48,10 +68,14 @@
 
         <toolWindow id="Call Stack Explorer"
                     anchor="bottom"
+                    canCloseContents="true"
                     factoryClass="com.thusitha.callstackexplorer.ui.CallStackToolWindowFactory"
                     icon="/icons/callstack.svg"/>
 
         <notificationGroup id="Call Stack Explorer" displayType="BALLOON"/>
+        <notificationGroup id="Call Stack Explorer Progress" displayType="STICKY_BALLOON"/>
+
+        <postStartupActivity implementation="com.thusitha.callstackexplorer.mcp.McpStartupActivity"/>
     </extensions>
 
     <applicationListeners>
@@ -66,6 +90,13 @@
                 description="Save the current debugger call stack for later viewing"
                 icon="/icons/saveStack.svg">
             <add-to-group group-id="XDebugger.ToolWindow.TopToolbar3.Extra" anchor="last"/>
+        </action>
+        <action id="CallStackExplorer.SaveValues"
+                class="com.thusitha.callstackexplorer.action.SaveValuesAction"
+                text="Save Value to Call Stack Explorer"
+                description="Save the selected variables' values so they can be compared in a later debug run"
+                icon="/icons/saveStack.svg">
+            <add-to-group group-id="XDebugger.ValueGroup" anchor="last"/>
         </action>
     </actions>
 </idea-plugin>

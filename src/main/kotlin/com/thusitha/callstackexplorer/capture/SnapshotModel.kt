@@ -6,13 +6,29 @@ import java.time.Instant
  * Plain data classes with no IntelliJ platform types, so a snapshot can be
  * serialized and later loaded/browsed without any live debugger session,
  * JDI reference, or VirtualFile behind it.
+ *
+ * Note: Gson bypasses Kotlin default values when a field is missing from the
+ * JSON, so any field added after 0.1.0 must be nullable (older snapshot files
+ * load with it as null).
  */
 data class SnapshotModel(
     val id: String,
     val capturedAt: Instant,
     val label: String,
-    val threads: List<ThreadSnapshot>
-)
+    val threads: List<ThreadSnapshot>,
+    /** null for snapshots written before kinds existed - treat as [SnapshotKind.STACK]. */
+    val kind: SnapshotKind? = SnapshotKind.STACK
+) {
+    val effectiveKind: SnapshotKind get() = kind ?: SnapshotKind.STACK
+}
+
+enum class SnapshotKind {
+    /** Whole call stack of the paused thread, every frame with its locals. */
+    STACK,
+
+    /** Only the values the user picked in the debugger's Variables view. */
+    VALUES
+}
 
 data class ThreadSnapshot(
     val threadName: String,
@@ -39,5 +55,8 @@ data class VariableSnapshot(
 data class SnapshotSummary(
     val id: String,
     val label: String,
-    val capturedAt: Instant
-)
+    val capturedAt: Instant,
+    val kind: SnapshotKind? = SnapshotKind.STACK
+) {
+    val effectiveKind: SnapshotKind get() = kind ?: SnapshotKind.STACK
+}
